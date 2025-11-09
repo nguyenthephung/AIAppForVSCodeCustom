@@ -1,0 +1,322 @@
+/**
+ * Styles for VSCode AI App
+ * VSCode-inspired dark theme
+ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* VSCode Dark Theme Colors */
+    --bg-primary: #1e1e1e;
+    --bg-secondary: #252526;
+    --bg-tertiary: #2d2d30;
+    --border-color: #3e3e42;
+    --text-primary: #cccccc;
+    --text-secondary: #969696;
+    --accent-blue: #007acc;
+    --accent-blue-hover: #1e88d8;
+    --success-green: #4ec9b0;
+    --error-red: #f48771;
+    --input-bg: #3c3c3c;
+    --scrollbar-bg: #1e1e1e;
+    --scrollbar-thumb: #424242;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Header */
+.header {
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 12px 20px;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.api-status {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.status-indicator {
+    font-size: 12px;
+}
+
+.status-text {
+    font-size: 13px;
+    color: var(--success-green);
+    font-weight: 500;
+}
+
+.status-text.error {
+    color: var(--error-red);
+}
+
+/* Main Container */
+.main-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Browser Panel (80%) */
+.browser-panel {
+    width: 80%;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-color);
+}
+
+.browser-controls {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    align-items: center;
+}
+
+.extract-status {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-left: 8px;
+}
+
+.url-input {
+    flex: 1;
+    padding: 6px 12px;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.url-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+.webview-container {
+    flex: 1;
+    background-color: white;
+    position: relative;
+}
+
+webview {
+    width: 100%;
+    height: 100%;
+}
+
+/* Chat Panel (20%) */
+.chat-panel {
+    width: 20%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-secondary);
+    min-width: 300px;
+}
+
+.chat-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.chat-header > div:first-child {
+    flex: 1;
+}
+
+.chat-header h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.chat-subtitle {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.chat-message {
+    padding: 10px 12px;
+    border-radius: 6px;
+    max-width: 100%;
+    word-wrap: break-word;
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.chat-message.user {
+    background-color: var(--accent-blue);
+    color: white;
+    align-self: flex-end;
+}
+
+.chat-message.assistant {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+}
+
+.chat-message.system {
+    background-color: var(--input-bg);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-style: italic;
+}
+
+.message-content {
+    line-height: 1.5;
+    font-size: 13px;
+}
+
+.chat-input-area {
+    padding: 12px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.chat-input {
+    width: 100%;
+    padding: 8px 12px;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+    resize: none;
+}
+
+.chat-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+/* Buttons */
+.btn {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 3px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-small {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+.btn-primary {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-blue-hover);
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+}
+
+.btn-secondary {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background-color: var(--input-bg);
+}
+
+.btn-send {
+    width: 100%;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .browser-panel {
+        width: 70%;
+    }
+    
+    .chat-panel {
+        width: 30%;
+    }
+}
+
+@media (max-width: 900px) {
+    .browser-panel {
+        width: 60%;
+    }
+    
+    .chat-panel {
+        width: 40%;
+    }
+}

@@ -1,0 +1,52 @@
+{
+  "name": "vscode-ai-app",
+  "version": "1.0.0",
+  "description": "AI-powered browser with LLM chatbox - VSCode integration ready",
+  "main": "out/main/main.js",
+  "scripts": {
+    "compile": "tsc -p ./ && npm run copy-assets",
+    "copy-assets": "node -e \"const fs=require('fs'); const path=require('path'); ['index.html','styles.css'].forEach(f=>fs.copyFileSync(path.join('src','renderer',f),path.join('out','renderer',f)))\"",
+    "watch": "tsc -watch -p ./",
+    "start": "npm run compile && electron .",
+    "dev": "concurrently \"npm run watch\" \"electron .\"",
+    "package": "electron-builder",
+    "compline": "npm run compile"
+  },
+  "keywords": [
+    "vscode",
+    "ai",
+    "electron",
+    "browser",
+    "llm"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "concurrently": "^8.2.2",
+    "electron": "^27.1.0",
+    "electron-builder": "^24.9.1",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2"
+  },
+  "dependencies": {
+    "axios": "^1.6.2"
+  },
+  "build": {
+    "appId": "com.vscode.aiapp",
+    "productName": "VSCode AI App",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "src/renderer/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
