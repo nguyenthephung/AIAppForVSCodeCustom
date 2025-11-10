@@ -286,35 +286,35 @@ Please provide clear, accurate answers based on this content.`;
         
         // Non-retryable errors
         if (errorMsg.includes('api key') || errorMsg.includes('api_key_invalid')) {
-            throw new Error('❌ Invalid API key. Check GEMINI_API_KEY in .env file\nGet your key at: https://aistudio.google.com/app/apikey');
+            throw new Error('Invalid API key. Check GEMINI_API_KEY in .env file\nGet your key at: https://aistudio.google.com/app/apikey');
         }
         
         if (errorMsg.includes('model not found')) {
-            throw new Error(`❌ Model "${this.config.modelName}" not found.\nAvailable: gemini-pro, gemini-1.5-pro, gemini-1.5-flash`);
+            throw new Error(`Model "${this.config.modelName}" not found.\nAvailable: gemini-pro, gemini-1.5-pro, gemini-1.5-flash`);
         }
         
         if (errorMsg.includes('billing') || errorMsg.includes('payment')) {
-            throw new Error('❌ Billing not enabled. Enable at: https://console.cloud.google.com/billing');
+            throw new Error('Billing not enabled. Enable at: https://console.cloud.google.com/billing');
         }
         
         // Retryable errors
         if (errorMsg.includes('quota') || errorMsg.includes('resource_exhausted')) {
             if (isLastAttempt) {
-                throw new Error('❌ API quota exceeded.\n• Free tier: 15 req/min, 1,500 req/day\n• Upgrade at: https://ai.google.dev/pricing');
+                throw new Error('API quota exceeded.\n• Free tier: 15 req/min, 1,500 req/day\n• Upgrade at: https://ai.google.dev/pricing');
             }
             return true;
         }
         
         if (errorMsg.includes('rate limit') || errorMsg.includes('too many requests')) {
             if (isLastAttempt) {
-                throw new Error('⏳ Rate limit reached. Please wait 1 minute.');
+                throw new Error('Rate limit reached. Please wait 1 minute.');
             }
             return true;
         }
         
         if (errorMsg.includes('network') || errorMsg.includes('fetch') || errorMsg.includes('timeout')) {
             if (isLastAttempt) {
-                throw new Error('🌐 Network error. Check:\n1. Internet connection\n2. Firewall settings\n3. Try again later');
+                throw new Error('Network error. Check:\n1. Internet connection\n2. Firewall settings\n3. Try again later');
             }
             return true;
         }

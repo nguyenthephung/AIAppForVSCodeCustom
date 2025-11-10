@@ -35,6 +35,8 @@ interface ElectronAPI {
 class AIApp {
     private webview: Electron.WebviewTag;
     private isContentExtracted: boolean = false;
+    private lastExtractedUrl: string = '';
+    private extractingUrls: Set<string> = new Set();
     private readonly api: ElectronAPI;
 
     constructor() {
@@ -99,11 +101,35 @@ class AIApp {
         // Webview handlers
         this.webview.addEventListener('did-finish-load', () => {
             // Auto-extract content when page loads
+            // NOTE: did-finish-load fires after page fully loads, which is the right time to extract.
+            // We don't listen to did-navigate or did-navigate-in-page to avoid duplicate extractions.
             this.autoExtractContent();
         });
 
         this.webview.addEventListener('did-fail-load', (event: unknown) => {
-            const err = event as { errorDescription?: string };
+            // Event shape: { errorCode, errorDescription, validatedURL, isMainFrame }
+            const err = event as { errorCode?: number; errorDescription?: string; validatedURL?: string; isMainFrame?: boolean };
+
+            // Ignore failures for subresources (only care about main frame)
+            if (typeof err.isMainFrame === 'boolean' && !err.isMainFrame) {
+                return;
+            }
+
+            // Ignore aborted navigations (ERR_ABORTED, code -3) which happen during normal navigation
+            if (err.errorCode === -3) {
+                return;
+            }
+
+            // If we already extracted content for the current page, don't show the failure notification.
+            try {
+                const currentUrl = (typeof this.webview.getURL === 'function') ? this.webview.getURL() : (this.webview.src as string);
+                if (this.isContentExtracted && err.validatedURL && currentUrl && err.validatedURL === currentUrl) {
+                    return;
+                }
+            } catch {
+                // ignore errors when calling getURL
+            }
+
             this.addChatMessage('system', `Failed to load website: ${err.errorDescription || 'Unknown error'}`);
         });
     }
@@ -120,8 +146,8 @@ class AIApp {
             chatMessages.innerHTML = `
                 <div class="chat-message system">
                     <div class="message-content">
-                        ✨ Chat history cleared! Ready for new questions.
-                    </div>
+                            Chat history cleared! Ready for new questions.
+                        </div>
                 </div>
             `;
         } catch (error) {
@@ -147,6 +173,7 @@ class AIApp {
         }
 
         this.isContentExtracted = false;
+        this.lastExtractedUrl = '';
         this.webview.src = url;
         this.updateExtractStatus('Loading website...');
     }
@@ -156,30 +183,61 @@ class AIApp {
      */
     private async autoExtractContent(): Promise<void> {
         const urlInput = document.getElementById('urlInput') as HTMLInputElement;
-        const url = urlInput.value.trim();
+
+        // Use the webview's current URL to handle in-page navigation (clicking links,
+        // SPA route changes, etc.). Fall back to the URL input value if unavailable.
+        const webviewUrl = (typeof this.webview.getURL === 'function') ? this.webview.getURL() : (this.webview.src as string) || '';
+        let url = (webviewUrl || '').toString().trim() || (urlInput?.value || '').trim();
 
         if (!url) {
             return;
         }
 
-        this.updateExtractStatus('📥 Extracting content...');
+        // If we've already successfully extracted this exact URL, skip re-extraction
+        if (this.isContentExtracted && this.lastExtractedUrl && this.lastExtractedUrl === url) {
+            // Keep status up to date but avoid duplicate notifications
+            this.updateExtractStatus('Content ready');
+            return;
+        }
 
+        // If an extraction for this URL is already in-flight, skip to avoid duplicate API calls
+        if (this.extractingUrls.has(url)) {
+            // Another extraction is running; avoid duplicate notifications
+            return;
+        }
+
+        // Keep the URL input in sync with the actual webview URL
+        if (urlInput && urlInput.value !== url) {
+            urlInput.value = url;
+        }
+
+    this.updateExtractStatus('Extracting content...');
+
+        // Mark as extracting to prevent concurrent work for the same URL
+        this.extractingUrls.add(url);
         try {
             const result = await this.api.extractWebContent(url);
-            
+
             if (result.success && result.content) {
                 this.isContentExtracted = true;
-                this.updateExtractStatus('✅ Content ready');
-                this.addChatMessage('system', `📄 Content extracted! You can now ask questions about this page.`);
+                this.updateExtractStatus('Content ready');
+                // Only notify the user when the extracted URL changes
+                if (this.lastExtractedUrl !== url) {
+                    this.addChatMessage('system', `Content extracted! You can now ask questions about this page.`);
+                    this.lastExtractedUrl = url;
+                }
             } else {
                 this.isContentExtracted = false;
-                this.updateExtractStatus('❌ Extract failed');
-                this.addChatMessage('system', `⚠️ Failed to extract content: ${result.error}`);
+                this.updateExtractStatus('Extract failed');
+                this.addChatMessage('system', `Failed to extract content: ${result.error}`);
             }
         } catch (error) {
             this.isContentExtracted = false;
-            this.updateExtractStatus('❌ Error');
-            this.addChatMessage('system', `❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            this.updateExtractStatus('Error');
+            this.addChatMessage('system', `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            // Clear in-flight marker
+            this.extractingUrls.delete(url);
         }
     }
 
@@ -206,7 +264,7 @@ class AIApp {
 
         // Check if content has been extracted
         if (!this.isContentExtracted) {
-            this.addChatMessage('system', '⚠️ Please wait for content extraction to complete, or load a website first.');
+            this.addChatMessage('system', 'Please wait for content extraction to complete, or load a website first.');
             return;
         }
 
@@ -215,7 +273,7 @@ class AIApp {
         chatInput.value = '';
 
         // Show loading
-        const loadingId = this.addChatMessage('assistant', '⏳ Thinking...');
+    const loadingId = this.addChatMessage('assistant', 'Thinking...');
 
         try {
             const result = await this.api.sendChatMessage(message);
@@ -226,11 +284,11 @@ class AIApp {
             if (result.success && result.response) {
                 this.addChatMessage('assistant', result.response);
             } else {
-                this.addChatMessage('system', `❌ Error: ${result.error}`);
+                this.addChatMessage('system', `Error: ${result.error}`);
             }
         } catch (error) {
             this.removeChatMessage(loadingId);
-            this.addChatMessage('system', `❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            this.addChatMessage('system', `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
 
