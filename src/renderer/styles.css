@@ -210,8 +210,45 @@ webview {
 }
 
 .message-content {
-    line-height: 1.5;
+    line-height: 1.6;
     font-size: 13px;
+}
+
+/* Message formatting styles */
+.message-content > div {
+    margin-bottom: 6px;
+}
+
+.message-content .bullet-point {
+    margin-left: 16px;
+    padding-left: 8px;
+    line-height: 1.6;
+}
+
+.message-content .numbered-item {
+    margin-left: 16px;
+    padding-left: 8px;
+    line-height: 1.6;
+}
+
+.message-content .section-header {
+    margin-top: 12px;
+    margin-bottom: 8px;
+    color: var(--accent-blue);
+}
+
+.message-content .line-break {
+    height: 6px;
+}
+
+.message-content strong {
+    color: var(--success-green);
+    font-weight: 600;
+}
+
+.message-content em {
+    color: var(--text-secondary);
+    font-style: italic;
 }
 
 .chat-input-area {

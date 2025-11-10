@@ -1,52 +1,53 @@
 /**
- * Renderer Process
- * Main application UI logic
- * VSCode-inspired clean architecture
- */
-
-/**
  * Renderer Process - UI Logic
+ * 
  * Handles user interactions, webview management, and chat interface
  * 
  * Features:
  * - Automatic content extraction on page load
  * - Real-time chat with AI about website content
  * - Chat history with clear functionality
+ * - Clean HTML formatting for AI responses
  * - VSCode-inspired dark theme UI
  */
 
 /**
  * Electron API interface (injected by preload script)
  */
-interface Window {
-    electronAPI: {
-        sendChatMessage: (message: string) => Promise<{
-            success: boolean;
-            response?: string;
-            error?: string;
-        }>;
-        extractWebContent: (url: string) => Promise<{
-            success: boolean;
-            content?: string;
-            error?: string;
-        }>;
-        clearChatHistory: () => Promise<{ success: boolean }>;
-    };
+interface ElectronAPI {
+    sendChatMessage: (message: string) => Promise<{
+        success: boolean;
+        response?: string;
+        error?: string;
+    }>;
+    extractWebContent: (url: string) => Promise<{
+        success: boolean;
+        content?: string;
+        error?: string;
+    }>;
+    clearChatHistory: () => Promise<{ success: boolean }>;
 }
 
-/**
+declare global {
+    interface Window {
+        electronAPI: ElectronAPI;
+    }
+}
+
+// Make this file a module
+export {};/**
  * Main Application Class
  * Manages the AI-powered browser interface
  */
 class AIApp {
-    private webview: Electron.WebviewTag;
+    private webview: Electron.WebviewTag | null;
     private isContentExtracted: boolean = false;
 
     constructor() {
-        this.webview = document.getElementById('webview') as Electron.WebviewTag;
+        this.webview = document.getElementById('webview') as Electron.WebviewTag | null;
         this.initializeUI();
         this.registerEventHandlers();
-        
+
         // Load default website
         this.loadDefaultWebsite();
     }
@@ -55,9 +56,11 @@ class AIApp {
      * Load default website on startup
      */
     private loadDefaultWebsite(): void {
-        const urlInput = document.getElementById('urlInput') as HTMLInputElement;
-        const defaultUrl = urlInput.value || 'https://vnexpress.net';
-        this.webview.src = defaultUrl;
+        const urlInput = document.getElementById('urlInput') as HTMLInputElement | null;
+        const defaultUrl = urlInput?.value?.trim() || 'https://vnexpress.net';
+        if (this.webview) {
+            this.webview.src = defaultUrl;
+        }
     }
 
     /**
@@ -99,15 +102,17 @@ class AIApp {
         });
 
         // Webview handlers
-        this.webview.addEventListener('did-finish-load', () => {
-            // Auto-extract content when page loads
-            this.autoExtractContent();
-        });
+        if (this.webview) {
+            this.webview.addEventListener('did-finish-load', () => {
+                // Auto-extract content when page loads
+                this.autoExtractContent();
+            });
 
-        this.webview.addEventListener('did-fail-load', (event: unknown) => {
-            const err = event as { errorDescription?: string };
-            this.addChatMessage('system', `Failed to load website: ${err.errorDescription || 'Unknown error'}`);
-        });
+            this.webview.addEventListener('did-fail-load', (event: unknown) => {
+                const err = event as { errorDescription?: string };
+                this.addChatMessage('system', `Failed to load website: ${err.errorDescription || 'Unknown error'}`);
+            });
+        }
     }
 
     /**
@@ -149,7 +154,11 @@ class AIApp {
         }
 
         this.isContentExtracted = false;
-        this.webview.src = url;
+        if (this.webview) {
+            this.webview.src = url;
+        } else {
+            this.addChatMessage('system', '⚠️ Webview is not available in this environment.');
+        }
         this.updateExtractStatus('Loading website...');
     }
 
@@ -237,7 +246,7 @@ class AIApp {
     }
 
     /**
-     * Add message to chat
+     * Add message to chat with proper HTML formatting
      */
     private addChatMessage(role: 'user' | 'assistant' | 'system', content: string): string {
         const chatMessages = document.getElementById('chatMessages');
@@ -250,9 +259,12 @@ class AIApp {
         messageDiv.id = messageId;
         messageDiv.className = `chat-message ${role}`;
 
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'message-content';
-        contentDiv.textContent = content;
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+
+    // Convert text formatting to HTML for better readability
+    // Use innerHTML after sanitizing/escaping and controlled tag insertion
+    contentDiv.innerHTML = this.formatMessageToHTML(content);
 
         messageDiv.appendChild(contentDiv);
         chatMessages.appendChild(messageDiv);
@@ -261,6 +273,67 @@ class AIApp {
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
         return messageId;
+    }
+
+    /**
+     * Convert plain text with formatting to HTML
+     */
+    private formatMessageToHTML(text: string): string {
+        // Escape HTML to prevent XSS
+        let html = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+        // Split into lines for processing
+        const lines = html.split('\n');
+        const formatted: string[] = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            // Skip empty lines but preserve spacing
+            if (!line) {
+                if (i > 0 && formatted.length > 0) {
+                    formatted.push('<div class="line-break"></div>');
+                }
+                continue;
+            }
+            
+            // Bullet points
+            if (/^[•\-*]\s+/.test(line)) {
+                const content = line.replace(/^[•\-*]\s+/, '');
+                formatted.push(`<div class="bullet-point">• ${content}</div>`);
+            }
+            // Numbered lists
+            else if (/^\d+\.\s+/.test(line)) {
+                const match = line.match(/^(\d+)\.\s+(.+)$/);
+                if (match) {
+                    formatted.push(`<div class="numbered-item">${match[1]}. ${match[2]}</div>`);
+                } else {
+                    formatted.push(`<div>${line}</div>`);
+                }
+            }
+            // Headers (lines ending with :)
+            else if (/^.+:$/.test(line) && line.length < 100) {
+                formatted.push(`<div class="section-header"><strong>${line}</strong></div>`);
+            }
+            // Regular text
+            else {
+                formatted.push(`<div>${line}</div>`);
+            }
+        }
+
+        // Join and apply final formatting
+        html = formatted.join('');
+
+        // Convert **bold** if any remains
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        
+        // Convert *italic*
+        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+        return html;
     }
 
     /**
