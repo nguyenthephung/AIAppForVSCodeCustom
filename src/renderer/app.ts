@@ -1,37 +1,31 @@
 /**
- * Renderer Process
- * Main application UI logic
- * VSCode-inspired clean architecture
- */
-
-/**
  * Renderer Process - UI Logic
+ * 
  * Handles user interactions, webview management, and chat interface
  * 
  * Features:
  * - Automatic content extraction on page load
  * - Real-time chat with AI about website content
  * - Chat history with clear functionality
+ * - Clean HTML formatting for AI responses
  * - VSCode-inspired dark theme UI
  */
 
 /**
  * Electron API interface (injected by preload script)
  */
-interface Window {
-    electronAPI: {
-        sendChatMessage: (message: string) => Promise<{
-            success: boolean;
-            response?: string;
-            error?: string;
-        }>;
-        extractWebContent: (url: string) => Promise<{
-            success: boolean;
-            content?: string;
-            error?: string;
-        }>;
-        clearChatHistory: () => Promise<{ success: boolean }>;
-    };
+interface ElectronAPI {
+    sendChatMessage: (message: string) => Promise<{
+        success: boolean;
+        response?: string;
+        error?: string;
+    }>;
+    extractWebContent: (url: string) => Promise<{
+        success: boolean;
+        content?: string;
+        error?: string;
+    }>;
+    clearChatHistory: () => Promise<{ success: boolean }>;
 }
 
 /**
@@ -41,8 +35,12 @@ interface Window {
 class AIApp {
     private webview: Electron.WebviewTag;
     private isContentExtracted: boolean = false;
+    private readonly api: ElectronAPI;
 
     constructor() {
+        // Type-safe access to electronAPI
+        this.api = (window as unknown as { electronAPI: ElectronAPI }).electronAPI;
+        
         this.webview = document.getElementById('webview') as Electron.WebviewTag;
         this.initializeUI();
         this.registerEventHandlers();
@@ -115,7 +113,7 @@ class AIApp {
      */
     private async handleClearChat(): Promise<void> {
         try {
-            await window.electronAPI.clearChatHistory();
+            await this.api.clearChatHistory();
             
             // Clear chat messages from UI
             const chatMessages = document.getElementById('chatMessages') as HTMLDivElement;
@@ -167,7 +165,7 @@ class AIApp {
         this.updateExtractStatus('📥 Extracting content...');
 
         try {
-            const result = await window.electronAPI.extractWebContent(url);
+            const result = await this.api.extractWebContent(url);
             
             if (result.success && result.content) {
                 this.isContentExtracted = true;
@@ -220,7 +218,7 @@ class AIApp {
         const loadingId = this.addChatMessage('assistant', '⏳ Thinking...');
 
         try {
-            const result = await window.electronAPI.sendChatMessage(message);
+            const result = await this.api.sendChatMessage(message);
             
             // Remove loading message
             this.removeChatMessage(loadingId);
