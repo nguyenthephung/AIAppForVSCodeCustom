@@ -1,53 +1,52 @@
 /**
+ * Renderer Process
+ * Main application UI logic
+ * VSCode-inspired clean architecture
+ */
+
+/**
  * Renderer Process - UI Logic
- * 
  * Handles user interactions, webview management, and chat interface
  * 
  * Features:
  * - Automatic content extraction on page load
  * - Real-time chat with AI about website content
  * - Chat history with clear functionality
- * - Clean HTML formatting for AI responses
  * - VSCode-inspired dark theme UI
  */
 
 /**
  * Electron API interface (injected by preload script)
  */
-interface ElectronAPI {
-    sendChatMessage: (message: string) => Promise<{
-        success: boolean;
-        response?: string;
-        error?: string;
-    }>;
-    extractWebContent: (url: string) => Promise<{
-        success: boolean;
-        content?: string;
-        error?: string;
-    }>;
-    clearChatHistory: () => Promise<{ success: boolean }>;
+interface Window {
+    electronAPI: {
+        sendChatMessage: (message: string) => Promise<{
+            success: boolean;
+            response?: string;
+            error?: string;
+        }>;
+        extractWebContent: (url: string) => Promise<{
+            success: boolean;
+            content?: string;
+            error?: string;
+        }>;
+        clearChatHistory: () => Promise<{ success: boolean }>;
+    };
 }
 
-declare global {
-    interface Window {
-        electronAPI: ElectronAPI;
-    }
-}
-
-// Make this file a module
-export {};/**
+/**
  * Main Application Class
  * Manages the AI-powered browser interface
  */
 class AIApp {
-    private webview: Electron.WebviewTag | null;
+    private webview: Electron.WebviewTag;
     private isContentExtracted: boolean = false;
 
     constructor() {
-        this.webview = document.getElementById('webview') as Electron.WebviewTag | null;
+        this.webview = document.getElementById('webview') as Electron.WebviewTag;
         this.initializeUI();
         this.registerEventHandlers();
-
+        
         // Load default website
         this.loadDefaultWebsite();
     }
@@ -56,11 +55,9 @@ class AIApp {
      * Load default website on startup
      */
     private loadDefaultWebsite(): void {
-        const urlInput = document.getElementById('urlInput') as HTMLInputElement | null;
-        const defaultUrl = urlInput?.value?.trim() || 'https://vnexpress.net';
-        if (this.webview) {
-            this.webview.src = defaultUrl;
-        }
+        const urlInput = document.getElementById('urlInput') as HTMLInputElement;
+        const defaultUrl = urlInput.value || 'https://vnexpress.net';
+        this.webview.src = defaultUrl;
     }
 
     /**
@@ -102,17 +99,15 @@ class AIApp {
         });
 
         // Webview handlers
-        if (this.webview) {
-            this.webview.addEventListener('did-finish-load', () => {
-                // Auto-extract content when page loads
-                this.autoExtractContent();
-            });
+        this.webview.addEventListener('did-finish-load', () => {
+            // Auto-extract content when page loads
+            this.autoExtractContent();
+        });
 
-            this.webview.addEventListener('did-fail-load', (event: unknown) => {
-                const err = event as { errorDescription?: string };
-                this.addChatMessage('system', `Failed to load website: ${err.errorDescription || 'Unknown error'}`);
-            });
-        }
+        this.webview.addEventListener('did-fail-load', (event: unknown) => {
+            const err = event as { errorDescription?: string };
+            this.addChatMessage('system', `Failed to load website: ${err.errorDescription || 'Unknown error'}`);
+        });
     }
 
     /**
@@ -154,11 +149,7 @@ class AIApp {
         }
 
         this.isContentExtracted = false;
-        if (this.webview) {
-            this.webview.src = url;
-        } else {
-            this.addChatMessage('system', '⚠️ Webview is not available in this environment.');
-        }
+        this.webview.src = url;
         this.updateExtractStatus('Loading website...');
     }
 
@@ -259,12 +250,11 @@ class AIApp {
         messageDiv.id = messageId;
         messageDiv.className = `chat-message ${role}`;
 
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-
-    // Convert text formatting to HTML for better readability
-    // Use innerHTML after sanitizing/escaping and controlled tag insertion
-    contentDiv.innerHTML = this.formatMessageToHTML(content);
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        
+        // Convert text formatting to HTML for better readability
+        contentDiv.innerHTML = this.formatMessageToHTML(content);
 
         messageDiv.appendChild(contentDiv);
         chatMessages.appendChild(messageDiv);
